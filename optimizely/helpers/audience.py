@@ -32,7 +32,7 @@ def is_user_in_experiment(config, experiment, attributes):
   if not audience_conditions or len(audience_conditions) is 0:
     return True
 
-  if not attributes:
+  if attributes is None:
     attributes = {}
 
   def evaluate_custom_attr(audience, index):

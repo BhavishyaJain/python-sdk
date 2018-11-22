@@ -764,7 +764,7 @@ class ConfigTest(base.BaseTest):
 
     self.assertIsNone(self.project_config.get_audience('42'))
 
-  def test_get_audience__retrieves_audiences_first_from_typedAudiences_before_audiences(self):
+  def test_get_audience__prefers_typedAudiences_over_audiences(self):
     opt = optimizely.Optimizely(json.dumps(self.config_dict_with_typed_audiences))
     config = opt.config
 
@@ -782,8 +782,8 @@ class ConfigTest(base.BaseTest):
     typed_audience_3988293898 = {
       'id': '3988293898',
       'name': 'substringString',
-      'conditions': '["and", ["or", ["or", '
-                    '{"name": "house", "type": "custom_attribute", "match":"substring", "value":"Slytherin"}]]]'
+      'conditions': ['and', ['or', ['or', {'name': 'house', 'type': 'custom_attribute',
+                     'match': 'substring', 'value': 'Slytherin'}]]]
     }
 
     self.assertTrue(typed_audience_3988293898 in typed_audiences)
@@ -792,10 +792,13 @@ class ConfigTest(base.BaseTest):
 
     self.assertEqual('3988293898', audience.id)
     self.assertEqual('substringString', audience.name)
-    self.assertEqual(
-      '["and", ["or", ["or", {"name": "house", "type": "custom_attribute", '
-      '"match":"substring", "value":"Slytherin"}]]]',
-      audience.conditions
+
+    # compare parsed JSON as conditions for typedAudiences is generated via json.dumps
+    # which can be different for python versions.
+    self.assertEqual(json.loads(
+      '["and", ["or", ["or", {"match": "substring", "type": "custom_attribute",'
+      ' "name": "house", "value": "Slytherin"}]]]'),
+      json.loads(audience.conditions)
     )
 
   def test_get_variation_from_key__valid_experiment_key(self):
@@ -1089,8 +1092,11 @@ class ConfigTest(base.BaseTest):
 
     self.assertFalse(self.project_config.set_forced_variation('test_experiment', 'test_user',
                                                               'variation_not_in_datafile'))
-    self.assertTrue(self.project_config.set_forced_variation('test_experiment', 'test_user', ''))
     self.assertTrue(self.project_config.set_forced_variation('test_experiment', 'test_user', None))
+
+    with mock.patch.object(self.project_config, 'logger') as mock_config_logging:
+      self.assertIs(self.project_config.set_forced_variation('test_experiment', 'test_user', ''), False)
+    mock_config_logging.debug.assert_called_once_with('Variation key is invalid.')
 
   def test_set_forced_variation__multiple_sets(self):
     """ Test multiple sets of experiments for one and multiple users work """
