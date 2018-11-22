@@ -16,40 +16,45 @@ import mock
 from tests import base
 from optimizely.helpers import audience
 
+chromeUserAudience = {
+  'conditions': ['and', {
+    'name': 'browser_type',
+    'value': 'chrome',
+    'type': 'custom_attribute',
+  }],
+}
+
+iphoneUserAudience = {
+  'conditions': ['and', {
+    'name': 'device_model',
+    'value': 'iphone',
+    'type': 'custom_attribute',
+  }],
+}
+
+conditionsPassingWithNoAttrs = ['not', {
+  'match': 'exists',
+  'name': 'input_value',
+  'type': 'custom_attribute',
+}]
+
+conditionsPassingWithNoAttrsAudience = {
+  'conditions': conditionsPassingWithNoAttrs,
+}
+
+audiencesById = {
+  0: chromeUserAudience,
+  1: iphoneUserAudience,
+  2: conditionsPassingWithNoAttrsAudience,
+}
+
 
 class AudienceTest(base.BaseTest):
   pass
 
-  # def test_is_match__audience_condition_matches(self):
-  #   """ Test that is_match returns True when audience conditions are met. """
-
-  #   user_attributes = {
-  #     'test_attribute': 'test_value_1',
-  #     'browser_type': 'firefox',
-  #     'location': 'San Francisco'
-  #   }
-
-  #   self.assertTrue(audience.is_match(self.optimizely.config.get_audience('11154'), user_attributes))
-
-  # def test_is_match__audience_condition_does_not_match(self):
-  #   """ Test that is_match returns False when audience conditions are not met. """
-
-  #   user_attributes = {
-  #     'test_attribute': 'wrong_test_value',
-  #     'browser_type': 'chrome',
-  #     'location': 'San Francisco'
-  #   }
-
-  #   self.assertFalse(audience.is_match(self.optimizely.config.get_audience('11154'), user_attributes))
-
   # def test_is_user_in_experiment__no_audience(self):
   #   """ Test that is_user_in_experiment returns True when experiment is using no audience. """
 
-  #   user_attributes = {
-  #     'test_attribute': 'test_value_1',
-  #     'browser_type': 'firefox',
-  #     'location': 'San Francisco'
-  #   }
   #   experiment = self.project_config.get_experiment_from_key('test_experiment')
   #   experiment.audienceIds = []
   #   self.assertTrue(audience.is_user_in_experiment(self.project_config, experiment, user_attributes))

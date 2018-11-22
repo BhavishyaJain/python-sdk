@@ -61,7 +61,7 @@ class Experiment(BaseEntity):
 
   def getAudienceConditionsOrIds(self):
     """ Returns audienceConditions if present, otherwise audienceIds. """
-    return self.audienceConditions or self.audienceIds
+    return self.audienceConditions if self.audienceConditions is not None else self.audienceIds
 
 
 class FeatureFlag(BaseEntity):
