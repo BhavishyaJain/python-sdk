@@ -11,13 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mock
 import json
+import mock
 
 from optimizely import entities
 from optimizely import optimizely
 from optimizely.helpers import audience
-from optimizely.helpers import condition as condition_helper
 from tests import base
 
 
@@ -115,7 +114,7 @@ class AudienceTest(base.BaseTest):
 
       self.assertStrictFalse(audience.is_user_in_experiment(self.project_config, experiment, user_attributes))
 
-  def test_is_user_in_experiment__evaluates_audiece_Ids(self):
+  def test_is_user_in_experiment__evaluates_audience_Ids(self):
     """ Test that is_user_in_experiment correctly evaluates audience Ids and
         calls custom attribute evaluator for leaf nodes. """
 
