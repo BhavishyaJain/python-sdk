@@ -12,266 +12,31 @@
 # limitations under the License.
 
 import mock
+from six import PY2, PY3
 
 from optimizely.helpers import condition as condition_helper
 
 from tests import base
 
-conditionA = {
-    'name': 'browser_type',
-    'value': 'safari',
-    'type': 'custom_attribute',
-  }
-
-conditionB = {
-    'name': 'device_model',
-    'value': 'iphone6',
-    'type': 'custom_attribute',
-  }
-
-conditionC = {
-    'name': 'location',
-    'match': 'exact',
-    'type': 'custom_attribute',
-    'value': 'CA',
-  }
-
-
-class ConditionTreeEvaluatorTests(base.BaseTest):
-
-  def setUp(self):
-    base.BaseTest.setUp(self)
-    self.condition_structure, self.condition_list = condition_helper.loads(
-      self.config_dict['audiences'][0]['conditions']
-    )
-
-    self.condition_tree_evaluator = condition_helper.ConditionTreeEvaluator()
-
-  def test_evaluate__returns_true(self):
-    """ Test that evaluate returns True when the leaf condition evaluator returns True. """
-
-    self.assertStrictTrue(self.condition_tree_evaluator.evaluate(conditionA, lambda a, b: True))
-
-  def test_evaluate__returns_false(self):
-    """ Test that evaluate returns False when the leaf condition evaluator returns False. """
-
-    self.assertStrictFalse(self.condition_tree_evaluator.evaluate(conditionA, lambda a, b: False))
-
-  def test_and_evaluator__returns_true(self):
-    """ Test that and_evaluator returns True when all conditions evaluate to True. """
-
-    self.assertStrictTrue(self.condition_tree_evaluator.evaluate(
-      ['and', conditionA, conditionB],
-      lambda a, b: True
-    ))
-
-  def test_and_evaluator__returns_false(self):
-    """ Test that and_evaluator returns False when any one condition evaluates to False. """
-
-    leafEvaluator = mock.MagicMock(side_effect=[True, False])
-
-    self.assertStrictFalse(self.condition_tree_evaluator.evaluate(
-      ['and', conditionA, conditionB],
-      lambda a, b: leafEvaluator()
-    ))
-
-  def test_and_evaluator__returns_null__when_all_null(self):
-    """ Test that and_evaluator returns null when all operands evaluate to null. """
-
-    self.assertIsNone(self.condition_tree_evaluator.evaluate(
-      ['and', conditionA, conditionB],
-      lambda a, b: None
-    ))
-
-  def test_and_evaluator__returns_null__when_trues_and_null(self):
-    """ Test that and_evaluator returns when operands evaluate to trues and null. """
-
-    leafEvaluator = mock.MagicMock(side_effect=[True, None])
-
-    self.assertIsNone(self.condition_tree_evaluator.evaluate(
-      ['and', conditionA, conditionB],
-      lambda a, b: leafEvaluator()
-    ))
-
-    leafEvaluator = mock.MagicMock(side_effect=[None, True])
-
-    self.assertIsNone(self.condition_tree_evaluator.evaluate(
-      ['and', conditionA, conditionB],
-      lambda a, b: leafEvaluator()
-    ))
-
-  def test_and_evaluator__returns_false__when_falses_and_null(self):
-    """ Test that and_evaluator returns False when when operands evaluate to falses and null. """
-
-    leafEvaluator = mock.MagicMock(side_effect=[False, None])
-
-    self.assertStrictFalse(self.condition_tree_evaluator.evaluate(
-      ['and', conditionA, conditionB],
-      lambda a, b: leafEvaluator()
-    ))
-
-    leafEvaluator = mock.MagicMock(side_effect=[None, False])
-
-    self.assertStrictFalse(self.condition_tree_evaluator.evaluate(
-      ['and', conditionA, conditionB],
-      lambda a, b: leafEvaluator()
-    ))
-
-  def test_and_evaluator__returns_false__when_trues_falses_and_null(self):
-    """ Test that and_evaluator returns False when operands evaluate to trues, falses and null. """
-
-    leafEvaluator = mock.MagicMock(side_effect=[True, False, None])
-
-    self.assertStrictFalse(self.condition_tree_evaluator.evaluate(
-      ['and', conditionA, conditionB],
-      lambda a, b: leafEvaluator()
-    ))
-
-  def test_or_evaluator__returns_true__when_any_true(self):
-    """ Test that or_evaluator returns True when any one condition evaluates to True. """
-
-    leafEvaluator = mock.MagicMock(side_effect=[False, True])
-
-    self.assertStrictTrue(self.condition_tree_evaluator.evaluate(
-      ['or', conditionA, conditionB],
-      lambda a, b: leafEvaluator()
-    ))
-
-  def test_or_evaluator__returns_false__when_all_false(self):
-    """ Test that or_evaluator returns False when all operands evaluate to False."""
-
-    self.assertStrictFalse(self.condition_tree_evaluator.evaluate(
-      ['or', conditionA, conditionB],
-      lambda a, b: False
-    ))
-
-  def test_or_evaluator__returns_null__when_all_null(self):
-    """ Test that or_evaluator returns null when all operands evaluate to null. """
-
-    self.assertIsNone(self.condition_tree_evaluator.evaluate(
-      ['or', conditionA, conditionB],
-      lambda a, b: None
-    ))
-
-  def test_or_evaluator__returns_true__when_trues_and_null(self):
-    """ Test that or_evaluator returns True when operands evaluate to trues and null. """
-
-    leafEvaluator = mock.MagicMock(side_effect=[None, True])
-
-    self.assertStrictTrue(self.condition_tree_evaluator.evaluate(
-      ['or', conditionA, conditionB],
-      lambda a, b: leafEvaluator()
-    ))
-
-    leafEvaluator = mock.MagicMock(side_effect=[True, None])
-
-    self.assertStrictTrue(self.condition_tree_evaluator.evaluate(
-      ['or', conditionA, conditionB],
-      lambda a, b: leafEvaluator()
-    ))
-
-  def test_or_evaluator__returns_null__when_falses_and_null(self):
-    """ Test that or_evaluator returns null when operands evaluate to falses and null. """
-
-    leafEvaluator = mock.MagicMock(side_effect=[False, None])
-
-    self.assertIsNone(self.condition_tree_evaluator.evaluate(
-      ['or', conditionA, conditionB],
-      lambda a, b: leafEvaluator()
-    ))
-
-    leafEvaluator = mock.MagicMock(side_effect=[None, False])
-
-    self.assertIsNone(self.condition_tree_evaluator.evaluate(
-      ['or', conditionA, conditionB],
-      lambda a, b: leafEvaluator()
-    ))
-
-  def test_or_evaluator__returns_true__when_trues_falses_and_null(self):
-    """ Test that or_evaluator returns True when operands evaluate to trues, falses and null. """
-
-    leafEvaluator = mock.MagicMock(side_effect=[False, None, True])
-
-    self.assertStrictTrue(self.condition_tree_evaluator.evaluate(
-      ['or', conditionA, conditionB, conditionC],
-      lambda a, b: leafEvaluator()
-    ))
-
-  def test_not_evaluator__returns_true(self):
-    """ Test that not_evaluator returns True when condition evaluates to False. """
-
-    self.assertStrictTrue(self.condition_tree_evaluator.evaluate(
-      ['not', conditionA],
-      lambda a, b: False
-    ))
-
-  def test_not_evaluator__returns_false(self):
-    """ Test that not_evaluator returns True when condition evaluates to False. """
-
-    self.assertStrictFalse(self.condition_tree_evaluator.evaluate(
-      ['not', conditionA],
-      lambda a, b: True
-    ))
-
-  def test_not_evaluator_negates_first_condition__ignores_rest(self):
-    """ Test that not_evaluator negates first condition and ignores rest. """
-    leafEvaluator = mock.MagicMock(side_effect=[False, True, None])
-
-    self.assertStrictTrue(self.condition_tree_evaluator.evaluate(
-      ['not', conditionA, conditionB, conditionC],
-      lambda a, b: leafEvaluator()
-    ))
-
-    leafEvaluator = mock.MagicMock(side_effect=[True, False, None])
-
-    self.assertStrictFalse(self.condition_tree_evaluator.evaluate(
-      ['not', conditionA, conditionB, conditionC],
-      lambda a, b: leafEvaluator()
-    ))
-
-    leafEvaluator = mock.MagicMock(side_effect=[None, True, False])
-
-    self.assertIsNone(self.condition_tree_evaluator.evaluate(
-      ['not', conditionA, conditionB, conditionC],
-      lambda a, b: leafEvaluator()
-    ))
-
-  def test_not_evaluator__returns_null__when_null(self):
-    """ Test that not_evaluator returns null when condition evaluates to null. """
-
-    self.assertIsNone(self.condition_tree_evaluator.evaluate(
-      ['not', conditionA],
-      lambda a, b: None
-    ))
-
-  def test_not_evaluator__returns_null__when_there_are_no_operands(self):
-    """ Test that not_evaluator returns null when there are no conditions. """
-
-    self.assertIsNone(self.condition_tree_evaluator.evaluate(
-      ['not'],
-      lambda a, b: True
-    ))
-
-  def test_evaluate_assumes__OR_operator__when_first_item_in_array_not_recognized_operator(self):
-    """ Test that by default OR operator is assumed when the first item in conditions is not
-        a recognized operator. """
-
-    leafEvaluator = mock.MagicMock(side_effect=[False, True])
-
-    self.assertStrictTrue(self.condition_tree_evaluator.evaluate(
-      [conditionA, conditionB],
-      lambda a, b: leafEvaluator()
-    ))
-
-    self.assertStrictFalse(self.condition_tree_evaluator.evaluate(
-      [conditionA, conditionB],
-      lambda a, b: False
-    ))
+if PY3:
+  def long(a):
+    raise NotImplementedError('Tests should only call `long` if running in PY2')
 
 browserConditionSafari = ['browser_type', 'safari', 'custom_attribute', 'exact']
 booleanCondition = ['is_firefox', True, 'custom_attribute', 'exact']
 integerCondition = ['num_users', 10, 'custom_attribute', 'exact']
 doubleCondition = ['pi_value', 3.14, 'custom_attribute', 'exact']
+
+exists_condition_list = [['input_value', None, 'custom_attribute', 'exists']]
+exact_string_condition_list = [['favorite_constellation', 'Lacerta', 'custom_attribute', 'exact']]
+exact_int_condition_list = [['lasers_count', 9000, 'custom_attribute', 'exact']]
+exact_float_condition_list = [['lasers_count', 9000.0, 'custom_attribute', 'exact']]
+exact_bool_condition_list = [['did_register_user', False, 'custom_attribute', 'exact']]
+substring_condition_list = [['headline_text', 'buy now', 'custom_attribute', 'substring']]
+gt_int_condition_list = [['meters_travelled', 48, 'custom_attribute', 'gt']]
+gt_float_condition_list = [['meters_travelled', 48.2, 'custom_attribute', 'gt']]
+lt_int_condition_list = [['meters_travelled', 48, 'custom_attribute', 'lt']]
+lt_float_condition_list = [['meters_travelled', 48.2, 'custom_attribute', 'lt']]
 
 
 class CustomAttributeConditionEvaluator(base.BaseTest):
@@ -321,7 +86,17 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
 
     self.assertIsNone(evaluator.evaluate(0))
 
-  def test_evaluate__returns_null__when_condition_has_an_type_match_property(self):
+  def test_evaluate__assumes_exact__when_condition_match_property_is_none(self):
+
+    condition_list = [['favorite_constellation', 'Lacerta', 'custom_attribute', None]]
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      condition_list, {'favorite_constellation': 'Lacerta'}
+    )
+
+    self.assertStrictTrue(evaluator.evaluate(0))
+
+  def test_evaluate__returns_null__when_condition_has_an_invalid_type_property(self):
 
     condition_list = [['weird_condition', 'hi', 'weird_type', 'exact']]
 
@@ -331,12 +106,10 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
 
     self.assertIsNone(evaluator.evaluate(0))
 
-  exists_condition_list = [['input_value', None, 'custom_attribute', 'exists']]
-
   def test_exists__returns_false__when_no_user_provided_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exists_condition_list, {}
+      exists_condition_list, {}
     )
 
     self.assertStrictFalse(evaluator.evaluate(0))
@@ -344,7 +117,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_exists__returns_false__when_user_provided_value_is_null(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exists_condition_list, {'input_value': None}
+      exists_condition_list, {'input_value': None}
     )
 
     self.assertStrictFalse(evaluator.evaluate(0))
@@ -352,7 +125,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_exists__returns_true__when_user_provided_value_is_string(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exists_condition_list, {'input_value': 'hi'}
+      exists_condition_list, {'input_value': 'hi'}
     )
 
     self.assertStrictTrue(evaluator.evaluate(0))
@@ -360,13 +133,13 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_exists__returns_true__when_user_provided_value_is_number(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exists_condition_list, {'input_value': 10}
+      exists_condition_list, {'input_value': 10}
     )
 
     self.assertStrictTrue(evaluator.evaluate(0))
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exists_condition_list, {'input_value': 10.0}
+      exists_condition_list, {'input_value': 10.0}
     )
 
     self.assertStrictTrue(evaluator.evaluate(0))
@@ -374,17 +147,15 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_exists__returns_true__when_user_provided_value_is_boolean(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exists_condition_list, {'input_value': False}
+      exists_condition_list, {'input_value': False}
     )
 
     self.assertStrictTrue(evaluator.evaluate(0))
 
-  exact_string_condition_list = [['favorite_constellation', 'Lacerta', 'custom_attribute', 'exact']]
-
   def test_exact_string__returns_true__when_user_provided_value_is_equal_to_condition_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_string_condition_list, {'favorite_constellation': 'Lacerta'}
+      exact_string_condition_list, {'favorite_constellation': 'Lacerta'}
     )
 
     self.assertStrictTrue(evaluator.evaluate(0))
@@ -392,7 +163,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_exact_string__returns_false__when_user_provided_value_is_not_equal_to_condition_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_string_condition_list, {'favorite_constellation': 'The Big Dipper'}
+      exact_string_condition_list, {'favorite_constellation': 'The Big Dipper'}
     )
 
     self.assertStrictFalse(evaluator.evaluate(0))
@@ -400,7 +171,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_exact_string__returns_null__when_user_provided_value_is_different_type_from_condition_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_string_condition_list, {'favorite_constellation': False}
+      exact_string_condition_list, {'favorite_constellation': False}
     )
 
     self.assertIsNone(evaluator.evaluate(0))
@@ -408,57 +179,117 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_exact_string__returns_null__when_no_user_provided_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_string_condition_list, {}
+      exact_string_condition_list, {}
     )
 
     self.assertIsNone(evaluator.evaluate(0))
 
-  exact_number_condition_list = [['lasers_count', 9000, 'custom_attribute', 'exact']]
+  def test_exact_int__returns_true__when_user_provided_value_is_equal_to_condition_value(self):
 
-  def test_exact_number__returns_true__when_user_provided_value_is_equal_to_condition_value(self):
+    if PY2:
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        exact_int_condition_list, {'lasers_count': long(9000)}
+      )
+
+      self.assertStrictTrue(evaluator.evaluate(0))
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_number_condition_list, {'lasers_count': 9000}
-    )
+        exact_int_condition_list, {'lasers_count': 9000}
+      )
 
     self.assertStrictTrue(evaluator.evaluate(0))
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_number_condition_list, {'lasers_count': 9000.0}
+      exact_int_condition_list, {'lasers_count': 9000.0}
     )
 
     self.assertStrictTrue(evaluator.evaluate(0))
 
-  def test_exact_number__returns_false__when_user_provided_value_is_not_equal_to_condition_value(self):
+  def test_exact_float__returns_true__when_user_provided_value_is_equal_to_condition_value(self):
+
+    if PY2:
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        exact_float_condition_list, {'lasers_count': long(9000)}
+      )
+
+      self.assertStrictTrue(evaluator.evaluate(0))
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_number_condition_list, {'lasers_count': 8000}
+        exact_float_condition_list, {'lasers_count': 9000}
+      )
+
+    self.assertStrictTrue(evaluator.evaluate(0))
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      exact_float_condition_list, {'lasers_count': 9000.0}
+    )
+
+    self.assertStrictTrue(evaluator.evaluate(0))
+
+  def test_exact_int__returns_false__when_user_provided_value_is_not_equal_to_condition_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      exact_int_condition_list, {'lasers_count': 8000}
     )
 
     self.assertStrictFalse(evaluator.evaluate(0))
 
-  def test_exact_number__returns_null__when_user_provided_value_is_different_type_from_condition_value(self):
+  def test_exact_float__returns_false__when_user_provided_value_is_not_equal_to_condition_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_number_condition_list, {'lasers_count': 'hi'}
+      exact_float_condition_list, {'lasers_count': 8000.0}
+    )
+
+    self.assertStrictFalse(evaluator.evaluate(0))
+
+  def test_exact_int__returns_null__when_user_provided_value_is_different_type_from_condition_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      exact_int_condition_list, {'lasers_count': 'hi'}
     )
 
     self.assertIsNone(evaluator.evaluate(0))
 
-  def test_exact_number__returns_null__when_no_user_provided_value(self):
-
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_number_condition_list, {}
+      exact_int_condition_list, {'lasers_count': True}
     )
 
     self.assertIsNone(evaluator.evaluate(0))
 
-  exact_bool_condition_list = [['did_register_user', False, 'custom_attribute', 'exact']]
+  def test_exact_float__returns_null__when_user_provided_value_is_different_type_from_condition_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      exact_float_condition_list, {'lasers_count': 'hi'}
+    )
+
+    self.assertIsNone(evaluator.evaluate(0))
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      exact_float_condition_list, {'lasers_count': True}
+    )
+
+    self.assertIsNone(evaluator.evaluate(0))
+
+  def test_exact_int__returns_null__when_no_user_provided_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      exact_int_condition_list, {}
+    )
+
+    self.assertIsNone(evaluator.evaluate(0))
+
+  def test_exact_float__returns_null__when_no_user_provided_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      exact_float_condition_list, {}
+    )
+
+    self.assertIsNone(evaluator.evaluate(0))
 
   def test_exact_bool__returns_true__when_user_provided_value_is_equal_to_condition_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_bool_condition_list, {'did_register_user': False}
+      exact_bool_condition_list, {'did_register_user': False}
     )
 
     self.assertStrictTrue(evaluator.evaluate(0))
@@ -466,7 +297,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_exact_bool__returns_false__when_user_provided_value_is_not_equal_to_condition_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_bool_condition_list, {'did_register_user': True}
+      exact_bool_condition_list, {'did_register_user': True}
     )
 
     self.assertStrictFalse(evaluator.evaluate(0))
@@ -474,7 +305,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_exact_bool__returns_null__when_user_provided_value_is_different_type_from_condition_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_bool_condition_list, {'did_register_user': 0}
+      exact_bool_condition_list, {'did_register_user': 0}
     )
 
     self.assertIsNone(evaluator.evaluate(0))
@@ -482,17 +313,15 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_exact_bool__returns_null__when_no_user_provided_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.exact_bool_condition_list, {}
+      exact_bool_condition_list, {}
     )
 
     self.assertIsNone(evaluator.evaluate(0))
 
-  substring_condition_list = [['headline_text', 'buy now', 'custom_attribute', 'substring']]
-
   def test_substring__returns_true__when_condition_value_is_substring_of_user_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.substring_condition_list, {'headline_text': 'Limited time, buy now!'}
+      substring_condition_list, {'headline_text': 'Limited time, buy now!'}
     )
 
     self.assertStrictTrue(evaluator.evaluate(0))
@@ -500,7 +329,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_substring__returns_false__when_condition_value_is_not_a_substring_of_user_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.substring_condition_list, {'headline_text': 'Breaking news!'}
+      substring_condition_list, {'headline_text': 'Breaking news!'}
     )
 
     self.assertStrictFalse(evaluator.evaluate(0))
@@ -508,7 +337,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_substring__returns_null__when_user_provided_value_not_a_string(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.substring_condition_list, {'headline_text': 10}
+      substring_condition_list, {'headline_text': 10}
     )
 
     self.assertIsNone(evaluator.evaluate(0))
@@ -516,87 +345,251 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_substring__returns_null__when_no_user_provided_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.substring_condition_list, {}
+      substring_condition_list, {}
     )
 
     self.assertIsNone(evaluator.evaluate(0))
 
-  gt_condition_list = [['meters_travelled', 48.2, 'custom_attribute', 'gt']]
-
-  def test_greater_than__returns_true__when_user_value_greater_than_condition_value(self):
+  def test_greater_than_int__returns_true__when_user_value_greater_than_condition_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.gt_condition_list, {'meters_travelled': 48.3}
+      gt_int_condition_list, {'meters_travelled': 48.1}
     )
 
     self.assertStrictTrue(evaluator.evaluate(0))
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.gt_condition_list, {'meters_travelled': 49}
+      gt_int_condition_list, {'meters_travelled': 49}
     )
 
     self.assertStrictTrue(evaluator.evaluate(0))
 
-  def test_greater_than__returns_false__when_user_value_not_greater_than_condition_value(self):
+    if PY2:
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        gt_int_condition_list, {'meters_travelled': long(49)}
+      )
+
+      self.assertStrictTrue(evaluator.evaluate(0))
+
+  def test_greater_than_float__returns_true__when_user_value_greater_than_condition_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.gt_condition_list, {'meters_travelled': 48.2}
+      gt_float_condition_list, {'meters_travelled': 48.3}
+    )
+
+    self.assertStrictTrue(evaluator.evaluate(0))
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      gt_float_condition_list, {'meters_travelled': 49}
+    )
+
+    self.assertStrictTrue(evaluator.evaluate(0))
+
+    if PY2:
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        gt_float_condition_list, {'meters_travelled': long(49)}
+      )
+
+      self.assertStrictTrue(evaluator.evaluate(0))
+
+  def test_greater_than_int__returns_false__when_user_value_not_greater_than_condition_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      gt_int_condition_list, {'meters_travelled': 47.9}
     )
 
     self.assertStrictFalse(evaluator.evaluate(0))
 
-  def test_greater_than__returns_null__when_user_value_is_not_a_number(self):
-
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.gt_condition_list, {'meters_travelled': 'a long way'}
-    )
-
-    self.assertIsNone(evaluator.evaluate(0))
-
-  def test_greater_than__returns_null__when_no_user_provided_value(self):
-
-    evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.gt_condition_list, {}
-    )
-
-    self.assertIsNone(evaluator.evaluate(0))
-
-  lt_condition_list = [['meters_travelled', 48.2, 'custom_attribute', 'lt']]
-
-  def test_less_than__returns_true__when_user_value_less_than_condition_value(self):
-
-    evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.lt_condition_list, {'meters_travelled': 48.1}
-    )
-
-    self.assertStrictTrue(evaluator.evaluate(0))
-
-    evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.lt_condition_list, {'meters_travelled': 48}
-    )
-
-    self.assertStrictTrue(evaluator.evaluate(0))
-
-  def test_less_than__returns_false__when_user_value_not_less_than_condition_value(self):
-
-    evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.lt_condition_list, {'meters_travelled': 48.2}
+      gt_int_condition_list, {'meters_travelled': 47}
     )
 
     self.assertStrictFalse(evaluator.evaluate(0))
 
-  def test_less_than__returns_null__when_user_value_is_not_a_number(self):
+    if PY2:
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        gt_int_condition_list, {'meters_travelled': long(47)}
+      )
+
+      self.assertStrictFalse(evaluator.evaluate(0))
+
+  def test_greater_than_float__returns_false__when_user_value_not_greater_than_condition_value(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.lt_condition_list, {'meters_travelled': False}
+      gt_float_condition_list, {'meters_travelled': 48.2}
+    )
+
+    self.assertStrictFalse(evaluator.evaluate(0))
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      gt_float_condition_list, {'meters_travelled': 48}
+    )
+
+    self.assertStrictFalse(evaluator.evaluate(0))
+
+    if PY2:
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        gt_float_condition_list, {'meters_travelled': long(48)}
+      )
+
+      self.assertStrictFalse(evaluator.evaluate(0))
+
+  def test_greater_than_int__returns_null__when_user_value_is_not_a_number(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      gt_int_condition_list, {'meters_travelled': 'a long way'}
     )
 
     self.assertIsNone(evaluator.evaluate(0))
 
-  def test_less_than__returns_null__when_no_user_provided_value(self):
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      gt_int_condition_list, {'meters_travelled': False}
+    )
+
+    self.assertIsNone(evaluator.evaluate(0))
+
+  def test_greater_than_float__returns_null__when_user_value_is_not_a_number(self):
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      self.lt_condition_list, {}
+      gt_float_condition_list, {'meters_travelled': 'a long way'}
+    )
+
+    self.assertIsNone(evaluator.evaluate(0))
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      gt_float_condition_list, {'meters_travelled': False}
+    )
+
+    self.assertIsNone(evaluator.evaluate(0))
+
+  def test_greater_than_int__returns_null__when_no_user_provided_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      gt_int_condition_list, {}
+    )
+
+    self.assertIsNone(evaluator.evaluate(0))
+
+  def test_greater_than_float__returns_null__when_no_user_provided_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      gt_float_condition_list, {}
+    )
+
+    self.assertIsNone(evaluator.evaluate(0))
+
+  def test_less_than_int__returns_true__when_user_value_less_than_condition_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      lt_int_condition_list, {'meters_travelled': 47.9}
+    )
+
+    self.assertStrictTrue(evaluator.evaluate(0))
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      lt_int_condition_list, {'meters_travelled': 47}
+    )
+
+    self.assertStrictTrue(evaluator.evaluate(0))
+
+    if PY2:
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        lt_int_condition_list, {'meters_travelled': long(47)}
+      )
+
+      self.assertStrictTrue(evaluator.evaluate(0))
+
+  def test_less_than_float__returns_true__when_user_value_less_than_condition_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      lt_float_condition_list, {'meters_travelled': 48.1}
+    )
+
+    self.assertStrictTrue(evaluator.evaluate(0))
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      lt_float_condition_list, {'meters_travelled': 48}
+    )
+
+    self.assertStrictTrue(evaluator.evaluate(0))
+
+    if PY2:
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        lt_float_condition_list, {'meters_travelled': long(48)}
+      )
+
+      self.assertStrictTrue(evaluator.evaluate(0))
+
+  def test_less_than_int__returns_false__when_user_value_not_less_than_condition_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      lt_int_condition_list, {'meters_travelled': 48.1}
+    )
+
+    self.assertStrictFalse(evaluator.evaluate(0))
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      lt_int_condition_list, {'meters_travelled': 49}
+    )
+
+    self.assertStrictFalse(evaluator.evaluate(0))
+
+    if PY2:
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        lt_int_condition_list, {'meters_travelled': long(49)}
+      )
+
+      self.assertStrictFalse(evaluator.evaluate(0))
+
+  def test_less_than_float__returns_false__when_user_value_not_less_than_condition_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      lt_float_condition_list, {'meters_travelled': 48.2}
+    )
+
+    self.assertStrictFalse(evaluator.evaluate(0))
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      lt_float_condition_list, {'meters_travelled': 49}
+    )
+
+    self.assertStrictFalse(evaluator.evaluate(0))
+
+    if PY2:
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        lt_float_condition_list, {'meters_travelled': long(49)}
+      )
+
+      self.assertStrictFalse(evaluator.evaluate(0))
+
+  def test_less_than_int__returns_null__when_user_value_is_not_a_number(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      lt_int_condition_list, {'meters_travelled': False}
+    )
+
+    self.assertIsNone(evaluator.evaluate(0))
+
+  def test_less_than_float__returns_null__when_user_value_is_not_a_number(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      lt_float_condition_list, {'meters_travelled': False}
+    )
+
+    self.assertIsNone(evaluator.evaluate(0))
+
+  def test_less_than_int__returns_null__when_no_user_provided_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      lt_int_condition_list, {}
+    )
+
+    self.assertIsNone(evaluator.evaluate(0))
+
+  def test_less_than_float__returns_null__when_no_user_provided_value(self):
+
+    evaluator = condition_helper.CustomAttributeConditionEvaluator(
+      lt_float_condition_list, {}
     )
 
     self.assertIsNone(evaluator.evaluate(0))
@@ -612,11 +605,10 @@ class ConditionDecoderTests(base.BaseTest):
     )
 
     self.assertEqual(['and', ['or', ['or', 0]]], condition_structure)
-    self.assertEqual([['test_attribute', 'test_value_1', 'custom_attribute', 'exact']], condition_list)
+    self.assertEqual([['test_attribute', 'test_value_1', 'custom_attribute', None]], condition_list)
 
   def test_audience_condition_deserializer_defaults(self):
-    """ Test that audience_condition_deserializer defaults to None for
-        item 0(name), 1(value), 2(type) and to ConditionMatchTypes.EXACT for item 3(match). """
+    """ Test that audience_condition_deserializer defaults to None."""
 
     browserConditionSafari = {}
 
@@ -624,7 +616,4 @@ class ConditionDecoderTests(base.BaseTest):
     self.assertIsNone(items[0])
     self.assertIsNone(items[1])
     self.assertIsNone(items[2])
-    self.assertEqual(
-      condition_helper.ConditionMatchTypes.EXACT,
-      items[3]
-    )
+    self.assertIsNone(items[3])
