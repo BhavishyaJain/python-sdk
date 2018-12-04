@@ -860,7 +860,7 @@ class BaseTest(unittest.TestCase):
           ],
           'audienceIds': ['0'],
           'audienceConditions': ['and', ['or', '3468206642', '3988293898'], ['or', '3988293899', '3468206646',
-                                 '3468206647', '3468206644', '3468206643']],
+                                                                             '3468206647', '3468206644', '3468206643']],
           'forcedVariations': {}
             },
       ],
@@ -898,6 +898,11 @@ class BaseTest(unittest.TestCase):
         {
           'id': '3468206643',
           'name': '$$dummyExactBoolean',
+          'conditions': '{ "type": "custom_attribute", "name": "$opt_dummy_attribute", "value": "impossible_value" }'
+        },
+        {
+          'id': '3468206645',
+          'name': '$$dummyMultipleCustomAttrs',
           'conditions': '{ "type": "custom_attribute", "name": "$opt_dummy_attribute", "value": "impossible_value" }'
         },
         {
@@ -942,6 +947,12 @@ class BaseTest(unittest.TestCase):
           'name': 'exactBoolean',
           'conditions': ['and', ['or', ['or', {'name': 'should_do_it', 'type': 'custom_attribute',
                                                'match': 'exact', 'value': True}]]]
+        },
+        {
+          'id': '3468206645',
+          'name': 'multiple_custom_attrs',
+          'conditions': ["and", ["or", ["or", {"type": "custom_attribute", "name": "browser", "value": "chrome"},
+                                        {"type": "custom_attribute", "name": "browser", "value": "firefox"}]]]
         }
       ],
       'groups': [],
