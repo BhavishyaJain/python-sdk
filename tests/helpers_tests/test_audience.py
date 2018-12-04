@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Optimizely
+# Copyright 2016-2017, Optimizely
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -50,14 +50,63 @@ audiencesById = {
 
 
 class AudienceTest(base.BaseTest):
-  pass
 
-  # def test_is_user_in_experiment__no_audience(self):
-  #   """ Test that is_user_in_experiment returns True when experiment is using no audience. """
+  def test_is_user_in_experiment__no_audience(self):
+    """ Test that is_user_in_experiment returns True when experiment is using no audience. """
 
-  #   experiment = self.project_config.get_experiment_from_key('test_experiment')
-  #   experiment.audienceIds = []
-  #   self.assertTrue(audience.is_user_in_experiment(self.project_config, experiment, user_attributes))
+    user_attributes = {}
+
+    # Both Audience Ids and Conditions are Empty
+    experiment = self.project_config.get_experiment_from_key('test_experiment')
+    experiment.audienceIds = []
+    experiment.audienceConditions = []
+    self.assertTrue(audience.is_user_in_experiment(self.project_config, experiment, user_attributes))
+
+    # Audience Ids exist but Audience Conditions is Empty
+    experiment = self.project_config.get_experiment_from_key('test_experiment')
+    experiment.audienceIds = ['11154']
+    experiment.audienceConditions = []
+    self.assertTrue(audience.is_user_in_experiment(self.project_config, experiment, user_attributes))
+
+    # Audience Ids is Empty and  Audience Conditions is None
+    experiment = self.project_config.get_experiment_from_key('test_experiment')
+    experiment.audienceIds = []
+    experiment.audienceConditions = None
+    self.assertTrue(audience.is_user_in_experiment(self.project_config, experiment, user_attributes))
+
+
+  def test_is_user_in_experiment__with_audience(self):
+    """ Test that is_user_in_experiment evaluates non-empty audience. 
+        Test that is_user_in_experiment uses not None audienceConditions and ignores audienceIds.
+        Test that is_user_in_experiment uses audienceIds when audienceConditions is None.
+    """
+
+    user_attributes = {'test_attribute': 'test_value_1'}
+    experiment = self.project_config.get_experiment_from_key('test_experiment')
+    experiment.audienceIds = ['11154']
+
+    # Both Audience Ids and Conditions exist
+    with mock.patch('optimizely.helpers.condition_tree_evaluator.evaluate') as cond_tree_eval:
+
+      experiment.audienceConditions = ['and', ['or', '3468206642', '3988293898'], ['or', '3988293899',
+                                     '3468206646', '3468206647', '3468206644', '3468206643']]
+      audience.is_user_in_experiment(self.project_config, experiment, user_attributes)
+
+    self.assertEqual(experiment.audienceConditions,
+      cond_tree_eval.call_args[0][0])
+
+    # Audience Ids exist but Audience Conditions is None
+    with mock.patch('optimizely.helpers.condition_tree_evaluator.evaluate') as cond_tree_eval:
+      
+      experiment.audienceConditions = None
+      audience.is_user_in_experiment(self.project_config, experiment, user_attributes)
+
+    self.assertEqual(experiment.audienceIds,
+      cond_tree_eval.call_args[0][0])
+
+
+
+
 
   # def test_is_user_in_experiment__no_attributes(self):
   #   """ Test that is_user_in_experiment defaults attributes to empty Dict and
