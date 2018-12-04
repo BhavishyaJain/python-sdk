@@ -12,6 +12,7 @@
 # limitations under the License.
 
 from . import condition as condition_helper
+from . import condition_tree_evaluator
 
 
 def is_user_in_experiment(config, experiment, attributes):
@@ -29,31 +30,33 @@ def is_user_in_experiment(config, experiment, attributes):
 
   # Return True in case there are no audiences
   audience_conditions = experiment.getAudienceConditionsOrIds()
-  if not audience_conditions or len(audience_conditions) is 0:
+  if not audience_conditions:
     return True
 
   if attributes is None:
     attributes = {}
 
-  def evaluate_custom_attr(audience, index):
+  def evaluate_custom_attr(audienceIdToConditionIndexDict):
+    audienceId = list(audienceIdToConditionIndexDict.keys())[0]
+    index = audienceIdToConditionIndexDict[audienceId]
+
+    audience = config.get_audience(audienceId)
     custom_attr_condition_evaluator = condition_helper.CustomAttributeConditionEvaluator(
       audience.conditionList, attributes)
 
     return custom_attr_condition_evaluator.evaluate(index)
 
-  def evaluate_audience(audiencesTree, audienceId):
+  def evaluate_audience(audienceId):
     audience = config.get_audience(audienceId)
 
-    condition_tree_evaluator = condition_helper.ConditionTreeEvaluator(audience)
     return condition_tree_evaluator.evaluate(
       audience.conditionStructure,
-      lambda audience, index: evaluate_custom_attr(audience, index)
+      lambda index: evaluate_custom_attr({audienceId: index})
     )
 
-  condition_tree_evaluator = condition_helper.ConditionTreeEvaluator()
   eval_result = condition_tree_evaluator.evaluate(
     audience_conditions,
-    lambda i, audienceId: evaluate_audience(i, audienceId)
+    lambda audienceId: evaluate_audience(audienceId)
   )
 
   return eval_result or False
