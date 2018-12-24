@@ -50,7 +50,9 @@ class AudienceTest(base.BaseTest):
         Test that is_user_in_experiment uses not None audienceConditions and ignores audienceIds.
         Test that is_user_in_experiment uses audienceIds when audienceConditions is None.
     """
-
+    logger = logging.getLogger(__name__);
+    logger.setLevel(logging.WARN);
+    logger.handlers = [logging.StreamHandler()];
     user_attributes = {'test_attribute': 'test_value_1'}
     experiment = self.project_config.get_experiment_from_key('test_experiment')
     experiment.audienceIds = ['11154']
@@ -60,7 +62,7 @@ class AudienceTest(base.BaseTest):
 
       experiment.audienceConditions = ['and', ['or', '3468206642', '3988293898'], ['or', '3988293899',
                                        '3468206646', '3468206647', '3468206644', '3468206643']]
-      audience.is_user_in_experiment(self.project_config, experiment, user_attributes)
+      audience.is_user_in_experiment(self.project_config, experiment, user_attributes, logger)
 
     self.assertEqual(experiment.audienceConditions,
                      cond_tree_eval.call_args[0][0])
@@ -69,7 +71,7 @@ class AudienceTest(base.BaseTest):
     with mock.patch('optimizely.helpers.condition_tree_evaluator.evaluate') as cond_tree_eval:
 
       experiment.audienceConditions = None
-      audience.is_user_in_experiment(self.project_config, experiment, user_attributes)
+      audience.is_user_in_experiment(self.project_config, experiment, user_attributes, logger)
 
     self.assertEqual(experiment.audienceIds,
                      cond_tree_eval.call_args[0][0])

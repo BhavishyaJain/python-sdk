@@ -156,7 +156,7 @@ class DecisionService(object):
         self.logger.warning('User profile has invalid format.')
 
     # Bucket user and store the new decision
-    if not audience_helper.is_user_in_experiment(self.config, experiment, attributes):
+    if not audience_helper.is_user_in_experiment(self.config, experiment, attributes, self.logger):
       self.logger.info('User "%s" does not meet conditions to be in experiment "%s".' % (
         user_id,
         experiment.key

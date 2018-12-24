@@ -38,11 +38,22 @@ class CustomAttributeConditionEvaluator(object):
 
   CUSTOM_ATTRIBUTE_CONDITION_TYPE = 'custom_attribute'
 
-  def __init__(self, condition_data, attributes):
+  def __init__(self, condition_data, attributes, logger):
     self.condition_data = condition_data
     self.attributes = attributes or {}
+    self.logger = logger
 
-  def is_value_valid_for_exact_conditions(self, value):
+  def _log_warning_for_unexpected_attributes(self, condition, attr, value):
+      if value is None:
+          message = 'Audience condition %s evaluated as UNKNOWN because the value\
+           for user attribute \"%s\" is inapplicable: \"%s\"' % (condition, attr, 'null')
+      else:
+          message = 'Audience condition %s evaluated as UNKNOWN because the value\
+           for user attribute \"%s\" is inapplicable: \"%s\"' % (condition, attr, value)
+      self.logger.warning(message)
+
+
+  def is_value_valid_for_exact_conditions(self, value, audienceId):
     """ Method to validate if the value is valid for exact match type evaluation.
 
     Args:
@@ -56,7 +67,7 @@ class CustomAttributeConditionEvaluator(object):
 
     return False
 
-  def exact_evaluator(self, index):
+  def exact_evaluator(self, index, audienceId, audienceCondition):
     """ Evaluate the given exact match condition for the user attributes.
 
     Args:
@@ -72,15 +83,22 @@ class CustomAttributeConditionEvaluator(object):
     """
     condition_value = self.condition_data[index][1]
     user_value = self.attributes.get(self.condition_data[index][0])
+    user_attr = self.condition_data[index][0]
 
-    if not self.is_value_valid_for_exact_conditions(condition_value) or \
-       not self.is_value_valid_for_exact_conditions(user_value) or \
+    if not self.is_value_valid_for_exact_conditions(condition_value, audienceId) or \
+       not self.is_value_valid_for_exact_conditions(user_value, audienceId) or \
        not validator.are_values_same_type(condition_value, user_value):
+        self._log_warning_for_unexpected_attributes(audienceCondition, user_attr, user_value)
         return None
 
-    return condition_value == user_value
+    result = (condition_value == user_value)
+    self.logger.info('Audience %s evaluated as %s' % (
+        audienceId,
+        str(result)
+    ))
+    return result
 
-  def exists_evaluator(self, index):
+  def exists_evaluator(self, index, audienceId):
     """ Evaluate the given exists match condition for the user attributes.
 
       Args:
@@ -91,9 +109,14 @@ class CustomAttributeConditionEvaluator(object):
                  otherwise False.
     """
     attr_name = self.condition_data[index][0]
-    return self.attributes.get(attr_name) is not None
+    result = self.attributes.get(attr_name) is not None
+    self.logger.info('Audience %s evaluated as %s' % (
+        audienceId,
+        str(result)
+    ))
+    return result
 
-  def greater_than_evaluator(self, index):
+  def greater_than_evaluator(self, index, audienceId, audienceCondition):
     """ Evaluate the given greater than match condition for the user attributes.
 
       Args:
@@ -107,13 +130,20 @@ class CustomAttributeConditionEvaluator(object):
     """
     condition_value = self.condition_data[index][1]
     user_value = self.attributes.get(self.condition_data[index][0])
+    user_attr = self.condition_data[index][0]
 
     if not validator.is_finite_number(condition_value) or not validator.is_finite_number(user_value):
+      self._log_warning_for_unexpected_attributes(audienceCondition, user_attr, user_value)
       return None
 
-    return user_value > condition_value
+    result = user_value > condition_value
+    self.logger.info('Audience %s evaluated as %s' % (
+        audienceId,
+        str(result)
+    ))
+    return result
 
-  def less_than_evaluator(self, index):
+  def less_than_evaluator(self, index, audienceId, audienceCondition):
     """ Evaluate the given less than match condition for the user attributes.
 
     Args:
@@ -127,13 +157,20 @@ class CustomAttributeConditionEvaluator(object):
     """
     condition_value = self.condition_data[index][1]
     user_value = self.attributes.get(self.condition_data[index][0])
+    user_attr = self.condition_data[index][0]
 
     if not validator.is_finite_number(condition_value) or not validator.is_finite_number(user_value):
+      self._log_warning_for_unexpected_attributes(audienceCondition, user_attr, user_value)
       return None
 
-    return user_value < condition_value
+    result = user_value < condition_value
+    self.logger.info('Audience %s evaluated as %s' % (
+        audienceId,
+        str(result)
+    ))
+    return result
 
-  def substring_evaluator(self, index):
+  def substring_evaluator(self, index, audienceId, audienceCondition):
     """ Evaluate the given substring match condition for the given user attributes.
 
     Args:
@@ -147,11 +184,18 @@ class CustomAttributeConditionEvaluator(object):
     """
     condition_value = self.condition_data[index][1]
     user_value = self.attributes.get(self.condition_data[index][0])
+    user_attr = self.condition_data[index][0]
 
     if not isinstance(condition_value, string_types) or not isinstance(user_value, string_types):
+      self._log_warning_for_unexpected_attributes(audienceCondition, user_attr, user_value)
       return None
 
-    return condition_value in user_value
+    result = condition_value in user_value
+    self.logger.info('Audience %s evaluated as %s' % (
+        audienceId,
+        str(result)
+    ))
+    return result
 
   EVALUATORS_BY_MATCH_TYPE = {
     ConditionMatchTypes.EXACT: exact_evaluator,
@@ -161,7 +205,7 @@ class CustomAttributeConditionEvaluator(object):
     ConditionMatchTypes.SUBSTRING: substring_evaluator
   }
 
-  def evaluate(self, index):
+  def evaluate(self, index, audienceId, audienceCondition):
     """ Given a custom attribute audience condition and user attributes, evaluate the
         condition against the attributes.
 
@@ -185,7 +229,7 @@ class CustomAttributeConditionEvaluator(object):
     if condition_match not in self.EVALUATORS_BY_MATCH_TYPE:
       return None
 
-    return self.EVALUATORS_BY_MATCH_TYPE[condition_match](self, index)
+    return self.EVALUATORS_BY_MATCH_TYPE[condition_match](self, index, audienceId, audienceCondition)
 
 
 class ConditionDecoder(object):

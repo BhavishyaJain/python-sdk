@@ -15,7 +15,7 @@ from . import condition as condition_helper
 from . import condition_tree_evaluator
 
 
-def is_user_in_experiment(config, experiment, attributes):
+def is_user_in_experiment(config, experiment, attributes, logger):
   """ Determine for given experiment if user satisfies the audiences for the experiment.
 
   Args:
@@ -31,6 +31,9 @@ def is_user_in_experiment(config, experiment, attributes):
   # Return True in case there are no audiences
   audience_conditions = experiment.getAudienceConditionsOrIds()
   if audience_conditions is None or audience_conditions == []:
+    logger.info('No audiences attached to experiment: %s.' % (
+      experiment.key
+    ))
     return True
 
   if attributes is None:
@@ -39,9 +42,12 @@ def is_user_in_experiment(config, experiment, attributes):
   def evaluate_custom_attr(audienceId, index):
     audience = config.get_audience(audienceId)
     custom_attr_condition_evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      audience.conditionList, attributes)
+      audience.conditionList, attributes, logger)
+    logger.debug('User Attributes: "%s".' % (
+      attributes
+    ))
 
-    return custom_attr_condition_evaluator.evaluate(index)
+    return custom_attr_condition_evaluator.evaluate(index, audienceId, audience.conditions)
 
   def evaluate_audience(audienceId):
     audience = config.get_audience(audienceId)
@@ -49,6 +55,10 @@ def is_user_in_experiment(config, experiment, attributes):
     if audience is None:
       return None
 
+    logger.debug('Starting to evaluate audience "%s" with conditions: "%s".' % (
+      audience_id,
+      audience.conditions
+    ))
     return condition_tree_evaluator.evaluate(
       audience.conditionStructure,
       lambda index: evaluate_custom_attr(audienceId, index)
