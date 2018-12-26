@@ -31,23 +31,20 @@ def is_user_in_experiment(config, experiment, attributes, logger):
   # Return True in case there are no audiences
   audience_conditions = experiment.getAudienceConditionsOrIds()
   if audience_conditions is None or audience_conditions == []:
-    logger.info('No audiences attached to experiment: %s.' % (
-      experiment.key
-    ))
     return True
 
+  logger.debug('User Attributes: "%s".' % (
+      attributes
+    ))
   if attributes is None:
     attributes = {}
 
   def evaluate_custom_attr(audienceId, index):
     audience = config.get_audience(audienceId)
     custom_attr_condition_evaluator = condition_helper.CustomAttributeConditionEvaluator(
-      audience.conditionList, attributes, logger)
-    logger.debug('User Attributes: "%s".' % (
-      attributes
-    ))
+      audience, attributes, logger)
 
-    return custom_attr_condition_evaluator.evaluate(index, audienceId, audience.conditions)
+    return custom_attr_condition_evaluator.evaluate(index)
 
   def evaluate_audience(audienceId):
     audience = config.get_audience(audienceId)
