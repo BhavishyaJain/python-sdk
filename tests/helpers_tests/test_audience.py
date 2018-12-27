@@ -22,6 +22,9 @@ from tests import base
 
 class AudienceTest(base.BaseTest):
 
+  def setUp(self):
+    self.mock_client_logger = mock.MagicMock()
+
   def test_is_user_in_experiment__no_audience(self):
     """ Test that is_user_in_experiment returns True when experiment is using no audience. """
 
@@ -31,28 +34,28 @@ class AudienceTest(base.BaseTest):
     experiment = self.project_config.get_experiment_from_key('test_experiment')
     experiment.audienceIds = []
     experiment.audienceConditions = []
-    self.assertStrictTrue(audience.is_user_in_experiment(self.project_config, experiment, user_attributes))
+    self.assertStrictTrue(audience.is_user_in_experiment(self.project_config,
+                                                         experiment, user_attributes, self.mock_client_logger))
 
     # Audience Ids exist but Audience Conditions is Empty
     experiment = self.project_config.get_experiment_from_key('test_experiment')
     experiment.audienceIds = ['11154']
     experiment.audienceConditions = []
-    self.assertStrictTrue(audience.is_user_in_experiment(self.project_config, experiment, user_attributes))
+    self.assertStrictTrue(audience.is_user_in_experiment(self.project_config,
+                                                         experiment, user_attributes, self.mock_client_logger))
 
     # Audience Ids is Empty and  Audience Conditions is None
     experiment = self.project_config.get_experiment_from_key('test_experiment')
     experiment.audienceIds = []
     experiment.audienceConditions = None
-    self.assertStrictTrue(audience.is_user_in_experiment(self.project_config, experiment, user_attributes))
+    self.assertStrictTrue(audience.is_user_in_experiment(self.project_config,
+                                                         experiment, user_attributes, self.mock_client_logger))
 
   def test_is_user_in_experiment__with_audience(self):
     """ Test that is_user_in_experiment evaluates non-empty audience.
         Test that is_user_in_experiment uses not None audienceConditions and ignores audienceIds.
         Test that is_user_in_experiment uses audienceIds when audienceConditions is None.
     """
-    logger = logging.getLogger(__name__);
-    logger.setLevel(logging.WARN);
-    logger.handlers = [logging.StreamHandler()];
     user_attributes = {'test_attribute': 'test_value_1'}
     experiment = self.project_config.get_experiment_from_key('test_experiment')
     experiment.audienceIds = ['11154']
@@ -62,7 +65,7 @@ class AudienceTest(base.BaseTest):
 
       experiment.audienceConditions = ['and', ['or', '3468206642', '3988293898'], ['or', '3988293899',
                                        '3468206646', '3468206647', '3468206644', '3468206643']]
-      audience.is_user_in_experiment(self.project_config, experiment, user_attributes, logger)
+      audience.is_user_in_experiment(self.project_config, experiment, user_attributes, self.mock_client_logger)
 
     self.assertEqual(experiment.audienceConditions,
                      cond_tree_eval.call_args[0][0])
@@ -71,7 +74,7 @@ class AudienceTest(base.BaseTest):
     with mock.patch('optimizely.helpers.condition_tree_evaluator.evaluate') as cond_tree_eval:
 
       experiment.audienceConditions = None
-      audience.is_user_in_experiment(self.project_config, experiment, user_attributes, logger)
+      audience.is_user_in_experiment(self.project_config, experiment, user_attributes, self.mock_client_logger)
 
     self.assertEqual(experiment.audienceIds,
                      cond_tree_eval.call_args[0][0])
@@ -101,7 +104,8 @@ class AudienceTest(base.BaseTest):
     experiment = self.project_config.get_experiment_from_key('test_experiment')
     with mock.patch('optimizely.helpers.condition_tree_evaluator.evaluate', return_value=True) as cond_tree_eval:
 
-      self.assertStrictTrue(audience.is_user_in_experiment(self.project_config, experiment, user_attributes))
+      self.assertStrictTrue(audience.is_user_in_experiment(self.project_config,
+                                                           experiment, user_attributes, self.mock_client_logger))
 
   def test_is_user_in_experiment__returns_False__when_condition_tree_evaluator_returns_None_or_False(self):
     """ Test that is_user_in_experiment returns False when call to condition_tree_evaluator returns None or False. """
@@ -110,11 +114,13 @@ class AudienceTest(base.BaseTest):
     experiment = self.project_config.get_experiment_from_key('test_experiment')
     with mock.patch('optimizely.helpers.condition_tree_evaluator.evaluate', return_value=None) as cond_tree_eval:
 
-      self.assertStrictFalse(audience.is_user_in_experiment(self.project_config, experiment, user_attributes))
+      self.assertStrictFalse(audience.is_user_in_experiment(
+        self.project_config, experiment, user_attributes, self.mock_client_logger))
 
     with mock.patch('optimizely.helpers.condition_tree_evaluator.evaluate', return_value=False) as cond_tree_eval:
 
-      self.assertStrictFalse(audience.is_user_in_experiment(self.project_config, experiment, user_attributes))
+      self.assertStrictFalse(audience.is_user_in_experiment(
+        self.project_config, experiment, user_attributes, self.mock_client_logger))
 
   def test_is_user_in_experiment__evaluates_audienceIds(self):
     """ Test that is_user_in_experiment correctly evaluates audience Ids and
@@ -126,7 +132,7 @@ class AudienceTest(base.BaseTest):
     experiment.audienceConditions = None
 
     with mock.patch('optimizely.helpers.condition.CustomAttributeConditionEvaluator') as custom_attr_eval:
-      audience.is_user_in_experiment(self.project_config, experiment, {})
+      audience.is_user_in_experiment(self.project_config, experiment, {}, self.mock_client_logger)
 
     audience_11154 = self.project_config.get_audience('11154')
     audience_11159 = self.project_config.get_audience('11159')

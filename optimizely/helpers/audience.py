@@ -11,8 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+
 from . import condition as condition_helper
 from . import condition_tree_evaluator
+from . import enums
 
 
 def is_user_in_experiment(config, experiment, attributes, logger):
@@ -30,12 +33,17 @@ def is_user_in_experiment(config, experiment, attributes, logger):
 
   # Return True in case there are no audiences
   audience_conditions = experiment.getAudienceConditionsOrIds()
+
+  logger.debug(enums.AudienceEvaluationLogs.AUDIENCE_CONDITIONS_IN_EXPERIMENT(
+    experiment.key,
+    json.dumps(audience_conditions)
+  ))
+
   if audience_conditions is None or audience_conditions == []:
     return True
 
-  logger.debug('User Attributes: "%s".' % (
-      attributes
-    ))
+  logger.debug(enums.AudienceEvaluationLogs.USER_ATTRIBUTES(attributes))
+
   if attributes is None:
     attributes = {}
 
@@ -43,7 +51,6 @@ def is_user_in_experiment(config, experiment, attributes, logger):
     audience = config.get_audience(audienceId)
     custom_attr_condition_evaluator = condition_helper.CustomAttributeConditionEvaluator(
       audience, attributes, logger)
-
     return custom_attr_condition_evaluator.evaluate(index)
 
   def evaluate_audience(audienceId):
@@ -52,18 +59,25 @@ def is_user_in_experiment(config, experiment, attributes, logger):
     if audience is None:
       return None
 
-    logger.debug('Starting to evaluate audience "%s" with conditions: "%s".' % (
-      audience_id,
-      audience.conditions
-    ))
-    return condition_tree_evaluator.evaluate(
+    logger.debug(enums.AudienceEvaluationLogs.AUDIENCE_CONDITIONS(audience_id, audience.conditions))
+
+    result = condition_tree_evaluator.evaluate(
       audience.conditionStructure,
       lambda index: evaluate_custom_attr(audienceId, index)
     )
+
+    logger.info(enums.AudienceEvaluationLogs.AUDIENCE_EVALUATION_RESULT(audienceId, str(result)))
+
+    return result
 
   eval_result = condition_tree_evaluator.evaluate(
     audience_conditions,
     evaluate_audience
   )
+
+  logger.info(enums.AudienceEvaluationLogs.AUDIENCE_EVALUATION_RESULT_COMBINED(
+    experiment.key,
+    str(eval_result)
+  ))
 
   return eval_result or False

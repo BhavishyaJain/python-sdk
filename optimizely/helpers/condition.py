@@ -16,6 +16,7 @@ import numbers
 
 from six import string_types
 
+from . import enums
 from . import validator
 
 
@@ -38,22 +39,13 @@ class CustomAttributeConditionEvaluator(object):
 
   CUSTOM_ATTRIBUTE_CONDITION_TYPE = 'custom_attribute'
 
-  def __init__(self, condition_data, attributes, logger):
-    self.condition_data = condition_data
+  def __init__(self, audience, attributes, logger):
+    self.audience = audience
+    self.condition_data = audience.conditionList
     self.attributes = attributes or {}
     self.logger = logger
 
-  def _log_warning_for_unexpected_attributes(self, condition, attr, value):
-      if value is None:
-          message = 'Audience condition %s evaluated as UNKNOWN because the value\
-           for user attribute \"%s\" is inapplicable: \"%s\"' % (condition, attr, 'null')
-      else:
-          message = 'Audience condition %s evaluated as UNKNOWN because the value\
-           for user attribute \"%s\" is inapplicable: \"%s\"' % (condition, attr, value)
-      self.logger.warning(message)
-
-
-  def is_value_valid_for_exact_conditions(self, value, audienceId):
+  def is_value_valid_for_exact_conditions(self, value):
     """ Method to validate if the value is valid for exact match type evaluation.
 
     Args:
@@ -67,7 +59,7 @@ class CustomAttributeConditionEvaluator(object):
 
     return False
 
-  def exact_evaluator(self, index, audienceId, audienceCondition):
+  def exact_evaluator(self, index):
     """ Evaluate the given exact match condition for the user attributes.
 
     Args:
@@ -81,24 +73,32 @@ class CustomAttributeConditionEvaluator(object):
         - if the condition value or user attribute value has an invalid type.
         - if there is a mismatch between the user attribute type and the condition value type.
     """
+    attr_key = self.condition_data[index][0]
     condition_value = self.condition_data[index][1]
-    user_value = self.attributes.get(self.condition_data[index][0])
-    user_attr = self.condition_data[index][0]
+    user_value = self.attributes.get(attr_key, 'null')
 
-    if not self.is_value_valid_for_exact_conditions(condition_value, audienceId) or \
-       not self.is_value_valid_for_exact_conditions(user_value, audienceId) or \
-       not validator.are_values_same_type(condition_value, user_value):
-        self._log_warning_for_unexpected_attributes(audienceCondition, user_attr, user_value)
+    if user_value == 'null':
+       self.logger.warning(enums.AudienceEvaluationLogs.MISSING_ATTRIBUTE_VALUE.format(
+         self.audience.conditions,
+         attr_key
+       ))
+       return None
+
+    if not self.is_value_valid_for_exact_conditions(condition_value):
         return None
 
-    result = (condition_value == user_value)
-    self.logger.info('Audience %s evaluated as %s' % (
-        audienceId,
-        str(result)
-    ))
-    return result
+    if not self.is_value_valid_for_exact_conditions(user_value) or \
+       not validator.are_values_same_type(condition_value, user_value):
+        self.logger.warning(enums.AudienceEvaluationLogs.UNEXPECTED_TYPE.format(
+            self.audience.conditions,
+            attr_key,
+            user_value
+        ))
+        return None
 
-  def exists_evaluator(self, index, audienceId):
+    return condition_value == user_value
+
+  def exists_evaluator(self, index):
     """ Evaluate the given exists match condition for the user attributes.
 
       Args:
@@ -109,14 +109,9 @@ class CustomAttributeConditionEvaluator(object):
                  otherwise False.
     """
     attr_name = self.condition_data[index][0]
-    result = self.attributes.get(attr_name) is not None
-    self.logger.info('Audience %s evaluated as %s' % (
-        audienceId,
-        str(result)
-    ))
-    return result
+    return self.attributes.get(attr_name) is not None
 
-  def greater_than_evaluator(self, index, audienceId, audienceCondition):
+  def greater_than_evaluator(self, index):
     """ Evaluate the given greater than match condition for the user attributes.
 
       Args:
@@ -128,22 +123,31 @@ class CustomAttributeConditionEvaluator(object):
           - False if the user attribute value is less than or equal to the condition value.
         None: if the condition value isn't finite or the user attribute value isn't finite.
     """
+    attr_key = self.condition_data[index][0]
     condition_value = self.condition_data[index][1]
-    user_value = self.attributes.get(self.condition_data[index][0])
-    user_attr = self.condition_data[index][0]
+    user_value = self.attributes.get(attr_key, 'null')
 
-    if not validator.is_finite_number(condition_value) or not validator.is_finite_number(user_value):
-      self._log_warning_for_unexpected_attributes(audienceCondition, user_attr, user_value)
+    if user_value == 'null':
+      self.logger.warning(enums.AudienceEvaluationLogs.MISSING_ATTRIBUTE_VALUE.format(
+        self.audience.conditions,
+        attr_key
+      ))
       return None
 
-    result = user_value > condition_value
-    self.logger.info('Audience %s evaluated as %s' % (
-        audienceId,
-        str(result)
-    ))
-    return result
+    if not validator.is_finite_number(condition_value):
+      return None
 
-  def less_than_evaluator(self, index, audienceId, audienceCondition):
+    if not validator.is_finite_number(user_value):
+      self.logger.warning(enums.AudienceEvaluationLogs.UNEXPECTED_TYPE.format(
+        self.audience.conditions,
+        attr_key,
+        user_value
+      ))
+      return None
+
+    return user_value > condition_value
+
+  def less_than_evaluator(self, index):
     """ Evaluate the given less than match condition for the user attributes.
 
     Args:
@@ -155,22 +159,31 @@ class CustomAttributeConditionEvaluator(object):
         - False if the user attribute value is greater than or equal to the condition value.
       None: if the condition value isn't finite or the user attribute value isn't finite.
     """
+    attr_key = self.condition_data[index][0]
     condition_value = self.condition_data[index][1]
-    user_value = self.attributes.get(self.condition_data[index][0])
-    user_attr = self.condition_data[index][0]
+    user_value = self.attributes.get(attr_key, 'null')
 
-    if not validator.is_finite_number(condition_value) or not validator.is_finite_number(user_value):
-      self._log_warning_for_unexpected_attributes(audienceCondition, user_attr, user_value)
+    if user_value == 'null':
+      self.logger.warning(enums.AudienceEvaluationLogs.MISSING_ATTRIBUTE_VALUE.format(
+        self.audience.conditions,
+        attr_key
+      ))
       return None
 
-    result = user_value < condition_value
-    self.logger.info('Audience %s evaluated as %s' % (
-        audienceId,
-        str(result)
-    ))
-    return result
+    if not validator.is_finite_number(condition_value):
+      return 'None'
 
-  def substring_evaluator(self, index, audienceId, audienceCondition):
+    if not validator.is_finite_number(user_value):
+      self.logger.warning(enums.AudienceEvaluationLogs.UNEXPECTED_TYPE.format(
+        self.audience.conditions,
+        attr_key,
+        user_value
+      ))
+      return None
+
+    return user_value < condition_value
+
+  def substring_evaluator(self, index):
     """ Evaluate the given substring match condition for the given user attributes.
 
     Args:
@@ -182,20 +195,22 @@ class CustomAttributeConditionEvaluator(object):
         - False if the condition value is not a substring of the user attribute value.
       None: if the condition value isn't a string or the user attribute value isn't a string.
     """
+    attr_key = self.condition_data[index][0]
     condition_value = self.condition_data[index][1]
-    user_value = self.attributes.get(self.condition_data[index][0])
-    user_attr = self.condition_data[index][0]
+    user_value = self.attributes.get(attr_key)
 
-    if not isinstance(condition_value, string_types) or not isinstance(user_value, string_types):
-      self._log_warning_for_unexpected_attributes(audienceCondition, user_attr, user_value)
+    if not isinstance(condition_value, string_types):
       return None
 
-    result = condition_value in user_value
-    self.logger.info('Audience %s evaluated as %s' % (
-        audienceId,
-        str(result)
-    ))
-    return result
+    if not isinstance(user_value, string_types):
+      self.logger.warning(enums.AudienceEvaluationLogs.UNEXPECTED_TYPE.format(
+        self.audience.conditions,
+        attr_key,
+        user_value
+      ))
+      return None
+
+    return condition_value in user_value
 
   EVALUATORS_BY_MATCH_TYPE = {
     ConditionMatchTypes.EXACT: exact_evaluator,
@@ -205,7 +220,7 @@ class CustomAttributeConditionEvaluator(object):
     ConditionMatchTypes.SUBSTRING: substring_evaluator
   }
 
-  def evaluate(self, index, audienceId, audienceCondition):
+  def evaluate(self, index):
     """ Given a custom attribute audience condition and user attributes, evaluate the
         condition against the attributes.
 
@@ -220,6 +235,7 @@ class CustomAttributeConditionEvaluator(object):
     """
 
     if self.condition_data[index][2] != self.CUSTOM_ATTRIBUTE_CONDITION_TYPE:
+      self.logger.debug(enums.AudienceEvaluationLogs.UNKNOWN_CONDITION_TYPE.format(self.audience.conditions))
       return None
 
     condition_match = self.condition_data[index][3]
@@ -227,9 +243,13 @@ class CustomAttributeConditionEvaluator(object):
       condition_match = ConditionMatchTypes.EXACT
 
     if condition_match not in self.EVALUATORS_BY_MATCH_TYPE:
+      self.logger.warning(enums.AudienceEvaluationLogs.UNKNOWN_MATCH_TYPE.format(self.audience.conditions))
       return None
 
-    return self.EVALUATORS_BY_MATCH_TYPE[condition_match](self, index, audienceId, audienceCondition)
+    return self.EVALUATORS_BY_MATCH_TYPE[condition_match](
+      self,
+      index
+    )
 
 
 class ConditionDecoder(object):
