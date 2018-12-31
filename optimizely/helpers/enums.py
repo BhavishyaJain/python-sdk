@@ -50,10 +50,8 @@ class AudienceEvaluationLogs(object):
   AUDIENCE_CONDITIONS_IN_EXPERIMENT = 'Evaluating audiences for experiment {}: "{}".'
   AUDIENCE_EVALUATION_RESULT = 'Audience "{}" evaluated as "{}".'
   AUDIENCE_EVALUATION_RESULT_COMBINED = 'Audiences for experiment {} collectively evaluated as {}.'
-  MISSING_ATTRIBUTE_VALUE = '''Audience condition"{}" evaluated as UNKNOWN because no value was passed
-                            for user attribute "{}".'''
-  UNEXPECTED_TYPE = '''Audience condition "{}" evaluated as UNKNOWN because the value for user attribute "{}"
-                    is inapplicable: "{}".'''
+  MISSING_ATTRIBUTE_VALUE = 'Audience condition {} evaluated as UNKNOWN because no user value was passed for attribute "{}".'
+  UNEXPECTED_TYPE = 'Audience condition {} evaluated as UNKNOWN because the value for user attribute "{}" is inapplicable: "{}".'
   UNKNOWN_CONDITION_TYPE = 'Audience condition "{}" has an unknown condition type.'
   UNKNOWN_MATCH_TYPE = 'Audience condition "{}" uses an unknown match type.'
   USER_ATTRIBUTES = 'User attributes: "{}".'

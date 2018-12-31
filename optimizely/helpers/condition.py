@@ -79,7 +79,7 @@ class CustomAttributeConditionEvaluator(object):
 
     if user_value == 'null':
        self.logger.warning(enums.AudienceEvaluationLogs.MISSING_ATTRIBUTE_VALUE.format(
-         self.audience.conditions,
+         json.dumps(self.audience.conditions),
          attr_key
        ))
        return None
@@ -90,7 +90,7 @@ class CustomAttributeConditionEvaluator(object):
     if not self.is_value_valid_for_exact_conditions(user_value) or \
        not validator.are_values_same_type(condition_value, user_value):
         self.logger.warning(enums.AudienceEvaluationLogs.UNEXPECTED_TYPE.format(
-            self.audience.conditions,
+            json.dumps(self.audience.conditions),
             attr_key,
             user_value
         ))
@@ -129,7 +129,7 @@ class CustomAttributeConditionEvaluator(object):
 
     if user_value == 'null':
       self.logger.warning(enums.AudienceEvaluationLogs.MISSING_ATTRIBUTE_VALUE.format(
-        self.audience.conditions,
+        json.dumps(self.audience.conditions),
         attr_key
       ))
       return None
@@ -139,13 +139,13 @@ class CustomAttributeConditionEvaluator(object):
 
     if not validator.is_finite_number(user_value):
       self.logger.warning(enums.AudienceEvaluationLogs.UNEXPECTED_TYPE.format(
-        self.audience.conditions,
+        json.dumps(self.audience.conditions),
         attr_key,
         user_value
       ))
       return None
 
-    return user_value > condition_value
+    return  user_value > condition_value
 
   def less_than_evaluator(self, index):
     """ Evaluate the given less than match condition for the user attributes.
@@ -165,7 +165,7 @@ class CustomAttributeConditionEvaluator(object):
 
     if user_value == 'null':
       self.logger.warning(enums.AudienceEvaluationLogs.MISSING_ATTRIBUTE_VALUE.format(
-        self.audience.conditions,
+        json.dumps(self.audience.conditions),
         attr_key
       ))
       return None
@@ -175,7 +175,7 @@ class CustomAttributeConditionEvaluator(object):
 
     if not validator.is_finite_number(user_value):
       self.logger.warning(enums.AudienceEvaluationLogs.UNEXPECTED_TYPE.format(
-        self.audience.conditions,
+        json.dumps(self.audience.conditions),
         attr_key,
         user_value
       ))
@@ -197,19 +197,26 @@ class CustomAttributeConditionEvaluator(object):
     """
     attr_key = self.condition_data[index][0]
     condition_value = self.condition_data[index][1]
-    user_value = self.attributes.get(attr_key)
+    user_value = self.attributes.get(attr_key, 'null')
+
+    if user_value == 'null':
+      self.logger.warning(enums.AudienceEvaluationLogs.MISSING_ATTRIBUTE_VALUE.format(
+        json.dumps(self.audience.conditions),
+        attr_key
+      ))
+      return None
 
     if not isinstance(condition_value, string_types):
       return None
-
-    if not isinstance(user_value, string_types):
+      
+    if not isinstance(user_value, string_types) :
       self.logger.warning(enums.AudienceEvaluationLogs.UNEXPECTED_TYPE.format(
-        self.audience.conditions,
+        json.dumps(self.audience.conditions),
         attr_key,
         user_value
       ))
       return None
-
+    
     return condition_value in user_value
 
   EVALUATORS_BY_MATCH_TYPE = {

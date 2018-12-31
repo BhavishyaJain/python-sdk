@@ -34,7 +34,7 @@ def is_user_in_experiment(config, experiment, attributes, logger):
   # Return True in case there are no audiences
   audience_conditions = experiment.getAudienceConditionsOrIds()
 
-  logger.debug(enums.AudienceEvaluationLogs.AUDIENCE_CONDITIONS_IN_EXPERIMENT(
+  logger.debug(enums.AudienceEvaluationLogs.AUDIENCE_CONDITIONS_IN_EXPERIMENT.format(
     experiment.key,
     json.dumps(audience_conditions)
   ))
@@ -42,7 +42,7 @@ def is_user_in_experiment(config, experiment, attributes, logger):
   if audience_conditions is None or audience_conditions == []:
     return True
 
-  logger.debug(enums.AudienceEvaluationLogs.USER_ATTRIBUTES(attributes))
+  logger.debug(enums.AudienceEvaluationLogs.USER_ATTRIBUTES.format(json.dumps(attributes)))
 
   if attributes is None:
     attributes = {}
@@ -58,15 +58,15 @@ def is_user_in_experiment(config, experiment, attributes, logger):
 
     if audience is None:
       return None
-
-    logger.debug(enums.AudienceEvaluationLogs.AUDIENCE_CONDITIONS(audience_id, audience.conditions))
+    
+    logger.debug(enums.AudienceEvaluationLogs.AUDIENCE_CONDITIONS.format(audienceId, json.dumps(audience.conditions)))
 
     result = condition_tree_evaluator.evaluate(
       audience.conditionStructure,
       lambda index: evaluate_custom_attr(audienceId, index)
     )
 
-    logger.info(enums.AudienceEvaluationLogs.AUDIENCE_EVALUATION_RESULT(audienceId, str(result)))
+    logger.info(enums.AudienceEvaluationLogs.AUDIENCE_EVALUATION_RESULT.format(audienceId, str(result)))
 
     return result
 
@@ -75,7 +75,7 @@ def is_user_in_experiment(config, experiment, attributes, logger):
     evaluate_audience
   )
 
-  logger.info(enums.AudienceEvaluationLogs.AUDIENCE_EVALUATION_RESULT_COMBINED(
+  logger.info(enums.AudienceEvaluationLogs.AUDIENCE_EVALUATION_RESULT_COMBINED.format(
     experiment.key,
     str(eval_result)
   ))

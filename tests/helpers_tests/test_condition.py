@@ -12,11 +12,13 @@
 # limitations under the License.
 
 import mock
+import json
 from six import PY2, PY3
 
 from optimizely import logger
 from optimizely import entities
 from optimizely.helpers import condition as condition_helper
+from optimizely.helpers import enums
 
 from tests import base
 
@@ -235,7 +237,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
 
   def test_exact_float__returns_true__when_user_provided_value_is_equal_to_condition_value(self):
 
-    self.audience.conditionList = exact_float_condition_list
+    self.audience.conditionList = exact_float_condition_list 
 
     if PY2:
       evaluator = condition_helper.CustomAttributeConditionEvaluator(
@@ -268,7 +270,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
 
   def test_exact_float__returns_false__when_user_provided_value_is_not_equal_to_condition_value(self):
 
-    self.audience.conditionList = exact_float_condition_list
+    self.audience.conditionList = exact_float_condition_list 
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
       self.audience, {'lasers_count': 8000.0}, self.mock_client_logger
@@ -294,7 +296,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
 
   def test_exact_float__returns_null__when_user_provided_value_is_different_type_from_condition_value(self):
 
-    self.audience.conditionList = exact_float_condition_list
+    self.audience.conditionList = exact_float_condition_list 
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
       self.audience, {'lasers_count': 'hi'}, self.mock_client_logger
@@ -320,8 +322,8 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
 
   def test_exact_float__returns_null__when_no_user_provided_value(self):
 
-    self.audience.conditionList = exact_float_condition_list
-
+    self.audience.conditionList = exact_float_condition_list 
+    
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
       self.audience, {}, self.mock_client_logger
     )
@@ -330,7 +332,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
 
   def test_exact_bool__returns_true__when_user_provided_value_is_equal_to_condition_value(self):
 
-    self.audience.conditionList = exact_bool_condition_list
+    self.audience.conditionList = exact_bool_condition_list 
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
       self.audience, {'did_register_user': False}, self.mock_client_logger
@@ -340,7 +342,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
 
   def test_exact_bool__returns_false__when_user_provided_value_is_not_equal_to_condition_value(self):
 
-    self.audience.conditionList = exact_bool_condition_list
+    self.audience.conditionList = exact_bool_condition_list 
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
       self.audience, {'did_register_user': True}, self.mock_client_logger
@@ -350,7 +352,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
 
   def test_exact_bool__returns_null__when_user_provided_value_is_different_type_from_condition_value(self):
 
-    self.audience.conditionList = exact_bool_condition_list
+    self.audience.conditionList = exact_bool_condition_list 
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
       self.audience, {'did_register_user': 0}, self.mock_client_logger
@@ -360,7 +362,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
 
   def test_exact_bool__returns_null__when_no_user_provided_value(self):
 
-    self.audience.conditionList = exact_bool_condition_list
+    self.audience.conditionList = exact_bool_condition_list 
 
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
       self.audience, {}, self.mock_client_logger
@@ -371,7 +373,7 @@ class CustomAttributeConditionEvaluator(base.BaseTest):
   def test_substring__returns_true__when_condition_value_is_substring_of_user_value(self):
 
     self.audience.conditionList = substring_condition_list
-
+    
     evaluator = condition_helper.CustomAttributeConditionEvaluator(
       self.audience, {'headline_text': 'Limited time, buy now!'}, self.mock_client_logger
     )
@@ -706,3 +708,130 @@ class ConditionDecoderTests(base.BaseTest):
     self.assertIsNone(items[1])
     self.assertIsNone(items[2])
     self.assertIsNone(items[3])
+
+
+class CustomAttributeConditionEvaluatorLogging(base.BaseTest):
+
+  def setUp(self):
+    base.BaseTest.setUp(self)
+    self.mock_client_logger = mock.MagicMock()
+
+  def test_exact__logs_warning__when_user_attribute_missing(self):
+
+    conditions = {"type": "custom_attribute", "name": "browser_type", "match": "exact", "value": "safari"}
+    audience = entities.Audience('1000', 'test_audience', conditions)
+    audience.conditionList = [browserConditionSafari]
+    with mock.patch('optimizely.logger.reset_logger', return_value=self.mock_client_logger):
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        audience, {'favorite_constellation': 'Lacerta'}, self.mock_client_logger
+      )
+    self.assertIsNone(evaluator.evaluate(0))
+
+    self.mock_client_logger.warning.assert_called_once_with(
+      enums.AudienceEvaluationLogs.MISSING_ATTRIBUTE_VALUE.format(json.dumps(conditions), conditions['name'])
+    )
+
+  def test_greater_than__logs_warning__when_user_attribute_missing(self):
+
+    conditions = {"type": "custom_attribute", "name": "meters_travelled", "match": "gt", "value": 48}
+    audience = entities.Audience('1000', 'test_audience', conditions)
+    audience.conditionList = gt_int_condition_list
+    with mock.patch('optimizely.logger.reset_logger', return_value=self.mock_client_logger):
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        audience, {'favorite_constellation': 'Lacerta'}, self.mock_client_logger
+      )
+    self.assertIsNone(evaluator.evaluate(0))
+
+    self.mock_client_logger.warning.assert_called_once_with(
+      enums.AudienceEvaluationLogs.MISSING_ATTRIBUTE_VALUE.format(json.dumps(conditions), conditions['name'])
+    )
+
+  def test_less_than__logs_warning__when_user_attribute_missing(self):
+
+    conditions = {"type": "custom_attribute", "name": "meters_travelled", "match": "lt", "value": 48}
+    audience = entities.Audience('1000', 'test_audience', conditions)
+    audience.conditionList = lt_int_condition_list
+    with mock.patch('optimizely.logger.reset_logger', return_value=self.mock_client_logger):
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        audience, {'favorite_constellation': 'Lacerta'}, self.mock_client_logger
+      )
+    self.assertIsNone(evaluator.evaluate(0))
+
+    self.mock_client_logger.warning.assert_called_once_with(
+      enums.AudienceEvaluationLogs.MISSING_ATTRIBUTE_VALUE.format(json.dumps(conditions), conditions['name'])
+    )
+
+  def test_substring__logs_warning__when_user_attribute_missing(self):
+
+    conditions = {"type": "custom_attribute", "name": "headline_text", "match": "substring", "value": "buy now!"}
+    audience = entities.Audience('1000', 'test_audience', conditions)
+    audience.conditionList = substring_condition_list
+    with mock.patch('optimizely.logger.reset_logger', return_value=self.mock_client_logger):
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        audience, {'favorite_constellation': 'Lacerta'}, self.mock_client_logger
+      )
+    self.assertIsNone(evaluator.evaluate(0))
+
+    self.mock_client_logger.warning.assert_called_once_with(
+      enums.AudienceEvaluationLogs.MISSING_ATTRIBUTE_VALUE.format(json.dumps(conditions), conditions['name'])
+    )
+
+  def test_exact__logs_warning__when_user_attribute_value_is_of_unexpected_type(self):
+
+    conditions = {"type": "custom_attribute", "name": "browser_type", "match": "exact", "value": 'safari'}
+    audience = entities.Audience('1000', 'test_audience', conditions)
+    audience.conditionList = [browserConditionSafari]
+    with mock.patch('optimizely.logger.reset_logger', return_value=self.mock_client_logger):
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        audience, {'browser_type': True}, self.mock_client_logger
+      )
+    self.assertIsNone(evaluator.evaluate(0))
+
+    self.mock_client_logger.warning.assert_called_once_with(
+      enums.AudienceEvaluationLogs.UNEXPECTED_TYPE.format(json.dumps(conditions), conditions['name'], True)
+    )
+  
+  def test_greater_than__logs_warning__when_user_attribute_value_is_of_unexpected_type(self):
+
+    conditions = {"type": "custom_attribute", "name": "meters_travelled", "match": "gt", "value": 48}
+    audience = entities.Audience('1000', 'test_audience', conditions)
+    audience.conditionList = gt_int_condition_list
+    with mock.patch('optimizely.logger.reset_logger', return_value=self.mock_client_logger):
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        audience, {'meters_travelled': '48'}, self.mock_client_logger
+      )
+    self.assertIsNone(evaluator.evaluate(0))
+
+    self.mock_client_logger.warning.assert_called_once_with(
+      enums.AudienceEvaluationLogs.UNEXPECTED_TYPE.format(json.dumps(conditions), conditions['name'], '48')
+    )
+
+  def test_less_than__logs_warning__when_user_attribute_value_is_of_unexpected_type(self):
+
+    conditions = {"type": "custom_attribute", "name": "meters_travelled", "match": "lt", "value": 48}
+    audience = entities.Audience('1000', 'test_audience', conditions)
+    audience.conditionList = lt_int_condition_list
+    with mock.patch('optimizely.logger.reset_logger', return_value=self.mock_client_logger):
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        audience, {'meters_travelled': '48'}, self.mock_client_logger
+      )
+    self.assertIsNone(evaluator.evaluate(0))
+
+    self.mock_client_logger.warning.assert_called_once_with(
+      enums.AudienceEvaluationLogs.UNEXPECTED_TYPE.format(json.dumps(conditions), conditions['name'], '48')
+    )
+
+  def test_substring__logs_warning__when_user_attribute_value_is_of_unexpected_type(self):
+
+    conditions = {"type": "custom_attribute", "name": "headline_text", "match": "substring", "value": "buy now!"}
+    audience = entities.Audience('1000', 'test_audience', conditions)
+    audience.conditionList = substring_condition_list
+    with mock.patch('optimizely.logger.reset_logger', return_value=self.mock_client_logger):
+      evaluator = condition_helper.CustomAttributeConditionEvaluator(
+        audience, {'headline_text': None}, self.mock_client_logger
+      )
+    self.assertIsNone(evaluator.evaluate(0))
+
+    self.mock_client_logger.warning.assert_called_once_with(
+      enums.AudienceEvaluationLogs.UNEXPECTED_TYPE.format(json.dumps(conditions), conditions['name'], None)
+    )

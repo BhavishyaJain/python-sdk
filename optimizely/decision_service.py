@@ -198,7 +198,7 @@ class DecisionService(object):
         experiment = self.config.get_experiment_from_key(rollout.experiments[idx].get('key'))
 
         # Check if user meets audience conditions for targeting rule
-        if not audience_helper.is_user_in_experiment(self.config, experiment, attributes):
+        if not audience_helper.is_user_in_experiment(self.config, experiment, attributes, self.logger):
           self.logger.debug('User "%s" does not meet conditions for targeting rule %s.' % (
             user_id,
             idx + 1
@@ -226,7 +226,8 @@ class DecisionService(object):
       everyone_else_experiment = self.config.get_experiment_from_key(rollout.experiments[-1].get('key'))
       if audience_helper.is_user_in_experiment(self.config,
                                                self.config.get_experiment_from_key(rollout.experiments[-1].get('key')),
-                                               attributes):
+                                               attributes,
+                                               self.logger):
         # Determine bucketing ID to be used
         bucketing_id = self._get_bucketing_id(user_id, attributes)
         variation = self.bucketer.bucket(everyone_else_experiment, user_id, bucketing_id)
